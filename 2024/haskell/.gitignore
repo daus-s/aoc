@@ -1,3 +1,13 @@
 .vscode/
 dist-newstyle/
 smpl/
+data/
+lib/
+
+
+
+
+
+# weirdo files
+sayhi.hs
+xdd.txt
