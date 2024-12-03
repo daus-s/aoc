@@ -33,8 +33,8 @@ executable file-sum
 
     -- LANGUAGE extensions used by modules in this package.
     -- other-extensions:
-    build-depends:    base ^>=4.17.0
-    hs-source-dirs:   app
+    build-depends:    base ^>=4.20.0
+    hs-source-dirs:   smpl
     default-language: Haskell2010
 
 executable main
@@ -44,8 +44,8 @@ executable main
 
     -- LANGUAGE extensions used by modules in this package.
     -- other-extensions:
-    build-depends:    base ^>=4.17.0
-    hs-source-dirs:   app
+    build-depends:    base ^>=4.20.0
+    hs-source-dirs:   smpl
     default-language: Haskell2010
 
 executable practice
@@ -55,8 +55,8 @@ executable practice
 
     -- LANGUAGE extensions used by modules in this package.
     -- other-extensions:
-    build-depends:    base ^>=4.17.0
-    hs-source-dirs:   app
+    build-depends:    base ^>=4.20.0
+    hs-source-dirs:   smpl
     default-language: Haskell2010
 
 executable historian
@@ -66,7 +66,7 @@ executable historian
 
     -- LANGUAGE extensions used by modules in this package.
     -- other-extensions:
-    build-depends:    base ^>=4.17.0
+    build-depends:    base ^>=4.20.0
     hs-source-dirs:   app
     default-language: Haskell2010
 
@@ -77,6 +77,6 @@ executable reports
 
     -- LANGUAGE extensions used by modules in this package.
     -- other-extensions:
-    build-depends:    base ^>=4.17.0
+    build-depends:    base ^>=4.20.0
     hs-source-dirs:   app
     default-language: Haskell2010
