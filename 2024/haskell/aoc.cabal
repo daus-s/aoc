@@ -25,40 +25,6 @@ synopsis: 2024 Advent of Code in Haskell
 -- category:
 extra-source-files: CHANGELOG.md
 
-executable file-sum
-    main-is:          SumLines.hs
-
-    -- Modules included in this executable, other than Main.
-    -- other-modules:
-
-    -- LANGUAGE extensions used by modules in this package.
-    -- other-extensions:
-    build-depends:    base ^>=4.20.0
-    hs-source-dirs:   smpl
-    default-language: Haskell2010
-
-executable main
-    main-is:          Main.hs
-    -- Modules included in this executable, other than Main.
-    -- other-modules:
-
-    -- LANGUAGE extensions used by modules in this package.
-    -- other-extensions:
-    build-depends:    base ^>=4.20.0
-    hs-source-dirs:   smpl
-    default-language: Haskell2010
-
-executable practice
-    main-is:          PracticeD1.hs
-    -- Modules included in this executable, other than Main.
-    -- other-modules:
-
-    -- LANGUAGE extensions used by modules in this package.
-    -- other-extensions:
-    build-depends:    base ^>=4.20.0
-    hs-source-dirs:   smpl
-    default-language: Haskell2010
-
 executable historian
     main-is:          Historian.hs
     -- Modules included in this executable, other than Main.
