@@ -1,10 +1,12 @@
 -- printer?
 -- i hardly know her?
 
+import Data.List (permutations)
 import Data.List.Split (splitOn)
 import Data.Maybe (fromMaybe)
 import Data.Strings (Str (strSplitAll), strSplit)
 import System.Environment (getArgs)
+import Text.Printf (printf)
 import Text.Read (readMaybe)
 
 main = do
@@ -12,14 +14,17 @@ main = do
   args <- getArgs
   case args of
     [filename] -> processFile filename
-    _ -> putStrLn "Usage: cabal run ceres -- <filename>"
+    _ -> putStrLn "Usage: cabal run printer -- <filename>"
 
 -- Open and read the file, process rows, and print the results for
 processFile :: FilePath -> IO ()
 processFile filename = do
   contents <- readFile filename
   let (rules, packets) = (map readRule $ lines x, map readPacket $ lines y) where (x, y) = strSplit "\n\n" contents
-  print $ sum (map median (filter (isCompliant rules) packets))
+  let corrected = map (subjugate (rules)) (filter (isTruant rules) packets)
+
+  printf "the sum of the middle pages of all the correctly ordered pages is: %d\n" (sum (map median (filter (isCompliant rules) packets)))
+  printf "the sum of the middle pages of all the corrected ordered pages is: %d\n" (sum (map median corrected))
 
 -- print (map readPacket packets)
 
@@ -50,6 +55,9 @@ readRule s = (readInt x, readInt y) where (x, y) = strSplit "|" s
 isCompliant :: [(Int, Int)] -> [Int] -> Bool
 isCompliant rules packet = all (\x -> x) (map (isLegal packet) rules)
 
+isTruant :: [(Int, Int)] -> [Int] -> Bool
+isTruant rules packet = not (isCompliant rules packet)
+
 isLegal :: [Int] -> (Int, Int) -> Bool
 isLegal list (pred, succ) = pred `notElem` ((singleSplit list succ) !! 1)
 
@@ -57,5 +65,5 @@ singleSplit :: [Int] -> Int -> [[Int]]
 singleSplit [] _ = [[]]
 singleSplit list val = [x !! 0] ++ [(concat (drop 1 x))] where x = splitOn [val] list
 
-subjugate :: [Int] -> [(Int, Int)] -> [Int]
-subjugate packet rules = [] -- TODO
+subjugate :: [(Int, Int)] -> [Int] -> [Int]
+subjugate rules packet = (filter (isCompliant rules) (permutations packet)) !! 0

@@ -73,7 +73,6 @@ executable ceres
     hs-source-dirs:   app
     default-language: Haskell2010
 
-
 executable printer
     main-is:          Printer.hs
     -- Modules included in this executable, other than Main.
