@@ -23,21 +23,14 @@ processFile filename = do
   let (rules, packets) = (map readRule $ lines x, map readPacket $ lines y) where (x, y) = strSplit "\n\n" contents
   let corrected = map (subjugate (rules)) (filter (isTruant rules) packets)
 
-  printf "the sum of the middle pages of all the correctly ordered pages is: %d\n" (sum (map median (filter (isCompliant rules) packets)))
-  printf "the sum of the middle pages of all the corrected ordered pages is: %d\n" (sum (map median corrected))
-
--- print (map readPacket packets)
-
--- map . print $ (median . fromMaybe [])
+  printf "the sum of the middle pages of all the correctly ordered packets is: %d\n" (sum (map median (filter (isCompliant rules) packets)))
+  printf "the sum of the middle pages of all the corrected packets is: %d\n" (sum (map median corrected))
 
 median :: [a] -> a
 median xs = xs !! middleNumber (length xs)
 
 middleNumber :: Int -> Int
 middleNumber x = floor (fromIntegral x / 2)
-
--- readPacket :: String -> Maybe [Int]
--- readPacket s = case all fromMaybe .  of
 
 readPacket :: String -> [Int] -- (map (strSplitAll ",")
 readPacket string = case all (\x -> x /= 0) (map readInt (strSplitAll "," string)) of
@@ -66,4 +59,23 @@ singleSplit [] _ = [[]]
 singleSplit list val = [x !! 0] ++ [(concat (drop 1 x))] where x = splitOn [val] list
 
 subjugate :: [(Int, Int)] -> [Int] -> [Int]
-subjugate rules packet = (filter (isCompliant rules) (permutations packet)) !! 0
+subjugate rules packet = generateList packet (filter (ruleApplies packet) rules)
+
+ruleApplies :: [Int] -> (Int, Int) -> Bool
+ruleApplies packet (pred, succ) = pred `elem` packet && succ `elem` packet
+
+definers :: Int -> [(Int, Int)] -> [Int]
+definers x rules = map snd (filter (\y -> (snd y == x)) rules)
+
+-- this should only be passed filtered rules for
+generateList :: [Int] -> [(Int, Int)] -> [Int]
+generateList [] _ = []
+generateList (l : ls) rules = case hasAny (definers l rules) (generateList ls rules) of
+  True -> [l] ++ (generateList ls rules)
+  False -> (generateList ls rules) ++ [l]
+
+hasAny :: [Int] -> [Int] -> Bool
+hasAny defers list = any (\x -> x) (map (isElem list) defers)
+
+isElem :: [Int] -> Int -> Bool
+isElem list val = val `elem` list
