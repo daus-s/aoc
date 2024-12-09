@@ -64,18 +64,38 @@ subjugate rules packet = generateList packet (filter (ruleApplies packet) rules)
 ruleApplies :: [Int] -> (Int, Int) -> Bool
 ruleApplies packet (pred, succ) = pred `elem` packet && succ `elem` packet
 
-definers :: Int -> [(Int, Int)] -> [Int]
-definers x rules = map snd (filter (\y -> (snd y == x)) rules)
-
--- this should only be passed filtered rules for
+-- this should only be passed filtered rules for performance considerations
 generateList :: [Int] -> [(Int, Int)] -> [Int]
 generateList [] _ = []
-generateList (l : ls) rules = case hasAny (definers l rules) (generateList ls rules) of
-  True -> [l] ++ (generateList ls rules)
-  False -> (generateList ls rules) ++ [l]
+generateList [x] rules = [x]
+generateList (l : ls) rules = correctSplit ([], gist) rules l where gist = generateList ls rules
+
+correctSplit :: ([Int], [Int]) -> [(Int, Int)] -> Int -> [Int]
+correctSplit ([], []) rules val = [val]
+correctSplit (start, []) rules val = start ++ [val]
+correctSplit ([], (e : end)) rules val =
+  case hasNoDeferrers (e : end) (getPredecessors val rules) of -- this is the initial case so this def should call itself
+    True -> [val] ++ (e : end)
+    False -> correctSplit ([e], end) rules val
+-- first case to call self
+
+correctSplit (start, e : end) rules val = case hasNoDeferrers start (getSuccessors val rules) && (hasNoDeferrers (e : end) (getPredecessors val rules)) of
+  True -> start ++ [val] ++ (e : end)
+  False -> correctSplit (start ++ [e], end) rules val
+
+-- general recursive case
 
 hasAny :: [Int] -> [Int] -> Bool
 hasAny defers list = any (\x -> x) (map (isElem list) defers)
 
 isElem :: [Int] -> Int -> Bool
 isElem list val = val `elem` list
+
+hasNoDeferrers :: [Int] -> [Int] -> Bool
+hasNoDeferrers list defers = not (any (\x -> x) (map (`elem` list) defers))
+
+getSuccessors :: Int -> [(Int, Int)] -> [Int]
+getSuccessors val rules = map snd (filter (\x -> (fst x) == val) rules)
+
+getPredecessors :: Int -> [(Int, Int)] -> [Int]
+getPredecessors val rules = map fst (filter (\x -> (snd x) == val) rules)
