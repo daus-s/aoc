@@ -1,6 +1,11 @@
 -- printer?
 -- i hardly know her?
 
+-- in all honesty, this problem was made far more difficult by my unwillingness to
+-- conform to haskell's strong type system. several parts of the problem would
+-- have required far less thinking. that is, less room to error in the code and
+-- more difficult to have careless reading mistakes
+
 import Data.List (permutations)
 import Data.List.Split (splitOn)
 import Data.Maybe (fromMaybe)
