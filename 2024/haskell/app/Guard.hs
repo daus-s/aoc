@@ -62,22 +62,14 @@ main = do
 processFile :: FilePath -> IO ()
 processFile filename = do
   contents <- readFile filename
-  let arr = toMLL $ lines contents
+  let map = toMLL $ lines contents
   let guard = findGuardC $ lines contents
-  printMapM_ (Map arr) guard
-  let finalCase = iterateMap (Map arr) guard
+  let (finalMap, finalGuard) = iterateMap (Map map) guard
 
-  -- mapM_ print (checkSquareList (Map arr))
-  -- printf "the guard visits %d distinct locations\n" (countVisited . ja $ finalCase)
-  -- printf "there are %d squares that will result in a loop with an added obstacle\n" (checkSquare (Map arr))
-  -- printMapM_ $ (modMap arr (4, 7) Obstacle)
-  -- print $ isLoop (Map (modMap arr (5, 9) Obstacle))
-  -- print $ isLoop (Map (modMap arr (3, 9) Obstacle))
-  putStrLn $ "___________________________________________________"
-  -- printMapM_ $ iterateMap (Map $ modMap arr (5, 9) Obstacle) guard
-  putStrLn $ "___________________________________________________"
+  printf "the guard visits %d distinct locations\n" (countVisited (ja finalMap))
 
--- printMapM_ $ ja $ iterateMap (Map $ modMap arr (3, 9) Obstacle)
+  printf "there are %d squares that will result in a loop with an added obstacle\n" (obstification (Map map) (guard))
+
 printMapM_ :: Map -> Guard -> IO ()
 printMapM_ (Map arr) g = mapM_ (putStrLn) (lines $ pmap (Map arr) g)
 
@@ -136,6 +128,24 @@ charDirection c = case c of
   '<' -> Left
   '>' -> Right
 
+obstification :: Map -> Guard -> Int
+obstification (Map arr) (Guard (Vector d (x, y))) = foldr (\a b -> if isLoop (Map (modMap arr a Obstacle)) (Guard (Vector d (x, y))) then 1 + b else b) 0 points
+  where
+    visits = filter (\x -> isVisited (arr @ x)) points
+    points =
+      ( [ (i, j)
+        | i <-
+            [ 1
+              .. length
+                ( case length arr of
+                    0 -> []
+                    _ -> arr !! 0
+                )
+            ],
+          j <- [1 .. length (arr)]
+        ]
+      )
+
 findGuardC :: [[Char]] -> Guard
 findGuardC arr = case length guards of
   1 -> guards !! 0
@@ -182,118 +192,101 @@ toSquare c = case c of
   'v' -> Tile (Knowledge False True False False)
   '^' -> Tile (Knowledge True False False False)
 
--- mapped list of lists
-
--- iterateMap :: Map -> Map
--- iterateMap (Map arr) = case arr @ (x, y) of
---   Guard g -> case g of
---     Up ->
---       if inside arr (x, y - 1)
---         then case arr @ (x, y - 1) of
---           Obstacle -> iterateMap (Map (modMap arr (x, y) (Guard Right))) -- return same map with right facing guard
---           Tile (Knowledge u d l r) -> iterateMap (Map (modMap (modMap arr (x, y) (Tile True (Knowledge (u || True) (d || False) (l || False) (r || False)))) (x, y - 1) (Guard Up))) -- return same map with the updated visit bool facing guard
---         else
---           (Map arr)
---     Right ->
---       if inside arr (x + 1, y)
---         then case arr @ (x + 1, y) of
---           Obstacle -> iterateMap (Map (modMap arr (x, y) (Guard Down))) -- return same map with down facing guard
---           Tile (Knowledge u d l r) -> iterateMap (Map (modMap (modMap arr (x, y) (Tile True (Knowledge (u || False) (d || False) (l || False) (r || True)))) (x + 1, y) (Guard Right))) -- return same map with the updated visit bool facing guard
---         else
---           (Map arr)
---     Down ->
---       if inside arr (x, y + 1)
---         then case arr @ (x, y + 1) of
---           Obstacle -> iterateMap (Map (modMap arr (x, y) (Guard Left))) -- return same map with left facing guard
---           Tile (Knowledge u d l r) -> iterateMap (Map (modMap (modMap arr (x, y) (Tile True (Knowledge (u || False) (d || True) (l || False) (r || False)))) (x, y + 1) (Guard Down))) -- return same map with the updated visit bool facing guard
---         else
---           (Map arr)
---     Left ->
---       if inside arr (x - 1, y)
---         then case arr @ (x - 1, y) of
---           Obstacle -> iterateMap (Map (modMap arr (x, y) (Guard Up))) -- return same map with left facing guard
---           Tile (Knowledge u d l r) -> iterateMap (Map (modMap (modMap arr (x, y) (Tile True (Knowledge (u) (d) (True) (r)))) (x - 1, y) (Guard Left))) -- return same map with the updated visit bool facing guard
---         else
---           (Map arr)
---   where
---     (x, y) = findGuard grid (indices grid)
---     grid = toArray arr
-
-turnRight :: Direction -> Direction
+turnRight :: Direction -> Direction -- this makes me think matrices...
 turnRight d = case d of
   Up -> Right
   Right -> Down
   Down -> Left
-  Left -> Right
+  Left -> Up
+
+{-
+
+In this example, our guard while oppositional is still polite. Before arriving at any tile
+she lets the tile know the direction she enters that square in. Hmm, does this mean something weird for the input grid?
+continue as planned, let the Tile that the guard jumps into know that its being visited
+
+tell the tile that it is the spot of a turn, that is this square will have more than one visiting direction,
+
+....#.....
+....+---+#
+....|...|.
+..#.|...|.
+..+-+-+#|.
+..|.|.|.|.
+.#+-^-+-+.
+.+----++#.
+#+----++..
+......#O..
+
+in effect, where the pluses are.
+
+-}
 
 iterateMap :: Map -> Guard -> (Map, Guard)
 iterateMap (Map arr) (Guard (Vector dir (x, y))) = case dir of
   Up ->
     if inside arr (x, y - 1)
       then case arr @ (x, y - 1) of
+        Tile (Knowledge u d l r) -> iterateMap (Map (modMap arr (x, y - 1) (Tile (Knowledge True d l r)))) (Guard (Vector (dir) (x, y - 1)))
         Obstacle -> case arr @ (x, y) of
           Tile (Knowledge u d l r) -> iterateMap (Map (modMap arr (x, y) (Tile (Knowledge u d l True)))) (Guard (Vector (turnRight dir) (x, y)))
-        Tile (Knowledge u d l r) -> iterateMap (Map (modMap arr (x, y - 1) (Tile (Knowledge True d l r)))) (Guard (Vector (dir) (x, y - 1)))
+      else (Map arr, (Guard (Vector dir (x, y))))
+  Right ->
+    if inside arr (x + 1, y)
+      then case arr @ (x + 1, y) of
+        Tile (Knowledge u d l r) -> iterateMap (Map (modMap arr (x + 1, y) (Tile (Knowledge u d l True)))) (Guard (Vector (dir) (x + 1, y)))
+        Obstacle -> case arr @ (x, y) of
+          Tile (Knowledge u d l r) -> iterateMap (Map (modMap arr (x, y) (Tile (Knowledge u True l r)))) (Guard (Vector (turnRight dir) (x, y)))
       else (Map arr, (Guard (Vector dir (x, y))))
   Down ->
     if inside arr (x, y + 1)
       then case arr @ (x, y + 1) of
-        Obstacle -> case arr @ (x, y) of
-          Tile (Knowledge u d l r) -> iterateMap (Map (modMap arr (x, y) (Tile (Knowledge u True l r)))) (Guard (Vector (turnRight dir) (x, y)))
         Tile (Knowledge u d l r) -> iterateMap (Map (modMap arr (x, y + 1) (Tile (Knowledge u True l r)))) (Guard (Vector (dir) (x, y + 1)))
-      else (Map arr, (Guard (Vector dir (x, y))))
-  Left -> --TODO: Comoplete
-    if inside arr (x - 1, y)
-      then case arr @ (x - 1, y ) of
         Obstacle -> case arr @ (x, y) of
-          Tile (Knowledge u d l r) -> iterateMap (Map (modMap arr (x, y) (Tile (Knowledge u d l True)))) (Guard (Vector (turnRight dir) (x, y)))
-        Tile (Knowledge u d l r) -> iterateMap (Map (modMap arr (x, y - 1) (Tile (Knowledge True d l r)))) (Guard (Vector (dir) (x, y - 1)))
+          Tile (Knowledge u d l r) -> iterateMap (Map (modMap arr (x, y) (Tile (Knowledge u d True r)))) (Guard (Vector (turnRight dir) (x, y)))
       else (Map arr, (Guard (Vector dir (x, y))))
-  Right -> --TODO: Comoplete
+  Left ->
+    if inside arr (x - 1, y)
+      then case arr @ (x - 1, y) of
+        Tile (Knowledge u d l r) -> iterateMap (Map (modMap arr (x - 1, y) (Tile (Knowledge u d True r)))) (Guard (Vector (dir) (x - 1, y)))
+        Obstacle -> case arr @ (x, y) of
+          Tile (Knowledge u d l r) -> iterateMap (Map (modMap arr (x, y) (Tile (Knowledge True d l r)))) (Guard (Vector (turnRight dir) (x, y)))
+      else (Map arr, (Guard (Vector dir (x, y))))
+
+isLoop :: Map -> Guard -> Bool
+isLoop (Map arr) (Guard (Vector dir (x, y))) = case dir of
+  Up ->
+    if inside arr (x, y - 1)
+      then case arr @ (x, y - 1) of
+        Tile (Knowledge u d l r) -> u || isLoop (Map (modMap arr (x, y - 1) (Tile (Knowledge True d l r)))) (Guard (Vector (dir) (x, y - 1)))
+        Obstacle -> case arr @ (x, y) of
+          Tile (Knowledge u d l r) -> r || isLoop (Map (modMap arr (x, y) (Tile (Knowledge u d l True)))) (Guard (Vector (turnRight dir) (x, y)))
+      else
+        False
+  Right ->
+    if inside arr (x + 1, y)
+      then case arr @ (x + 1, y) of
+        Tile (Knowledge u d l r) -> r || isLoop (Map (modMap arr (x + 1, y) (Tile (Knowledge u d l True)))) (Guard (Vector (dir) (x + 1, y)))
+        Obstacle -> case arr @ (x, y) of
+          Tile (Knowledge u d l r) -> d || isLoop (Map (modMap arr (x, y) (Tile (Knowledge u True l r)))) (Guard (Vector (turnRight dir) (x, y)))
+      else
+        False
+  Down ->
     if inside arr (x, y + 1)
       then case arr @ (x, y + 1) of
+        Tile (Knowledge u d l r) -> d || isLoop (Map (modMap arr (x, y + 1) (Tile (Knowledge u True l r)))) (Guard (Vector (dir) (x, y + 1)))
         Obstacle -> case arr @ (x, y) of
-          Tile (Knowledge u d l r) -> iterateMap (Map (modMap arr (x, y) (Tile (Knowledge u True l r)))) (Guard (Vector (turnRight dir) (x, y)))
-        Tile (Knowledge u d l r) -> iterateMap (Map (modMap arr (x, y + 1) (Tile (Knowledge u True l r)))) (Guard (Vector (dir) (x, y + 1)))
-      else (Map arr, (Guard (Vector dir (x, y))))
--- isLoop :: Map -> Bool
--- isLoop (Map arr) = case arr @ (x, y) of
---   Guard dir -> case dir of
---     Up ->
---       if trace ("is " ++ show (x, y - 1) ++ " bounded? " ++ (if inside arr (x, y - 1) then "yes" else "no")) inside arr (x, y - 1)
---         then case arr @ (x, y - 1) of
---           Obstacle -> isLoop (Map (modMap arr (x, y) (Guard Right))) -- return same map with right facing guard
---           Tile (Knowledge False d l r) -> isLoop (Map (modMap (modMap arr (x, y) (Tile True (Knowledge (True) (d) (l) (r)))) (x, y - 1) (Guard Up))) -- return same map with the updated visit bool facing guard
---           Tile (Knowledge True _ _ _) -> v && True
---         else
---           False
---     Right ->
---       if inside arr (x + 1, y)
---         then case arr @ (x + 1, y) of
---           Obstacle -> isLoop (Map (modMap arr (x, y) (Guard Down))) -- return same map with down facing guard
---           Tile (Knowledge u d l False) -> isLoop (Map (modMap (modMap arr (x, y) (Tile True (Knowledge (u) (d) (l) (True)))) (x + 1, y) (Guard Right))) -- return same map with the updated visit bool facing guard
---           Tile (Knowledge _ _ _ True) -> v && True
---         else
---           False
---     Down ->
---       if inside arr (x, y + 1)
---         then case arr @ (x, y + 1) of
---           Obstacle -> isLoop (Map (modMap arr (x, y) (Guard Left))) -- return same map with left facing guard
---           Tile (Knowledge u False l r) -> isLoop (Map (modMap (modMap arr (x, y) (Tile True (Knowledge (u) (True) (l) (r)))) (x, y + 1) (Guard Down))) -- return same map with the updated visit bool facing guard
---           Tile (Knowledge _ True _ _) -> v && True
---         else
---           False
---     Left ->
---       if inside arr (x - 1, y)
---         then case arr @ (x - 1, y) of
---           Obstacle -> isLoop (Map (modMap arr (x, y) (Guard Up))) -- return same map with upward facing guard
---           Tile (Knowledge u d False r) -> isLoop (Map (modMap (modMap arr (x, y) (Tile True (Knowledge (u) (d) (True) (r)))) (x - 1, y) (Guard Left))) -- return same map with the updated visit bool facing guard
---           Tile (Knowledge _ _ True _) -> v && True
---         else
---           False
---   where
---     (x, y) = findGuard grid (indices grid)
---     grid = toArray arr
+          Tile (Knowledge u d l r) -> l || isLoop (Map (modMap arr (x, y) (Tile (Knowledge u d True r)))) (Guard (Vector (turnRight dir) (x, y)))
+      else
+        False
+  Left ->
+    if inside arr (x - 1, y)
+      then case arr @ (x - 1, y) of
+        Tile (Knowledge u d l r) -> l || isLoop (Map (modMap arr (x - 1, y) (Tile (Knowledge u d True r)))) (Guard (Vector (dir) (x - 1, y)))
+        Obstacle -> case arr @ (x, y) of
+          Tile (Knowledge u d l r) -> u || isLoop (Map (modMap arr (x, y) (Tile (Knowledge True d l r)))) (Guard (Vector (turnRight dir) (x, y)))
+      else
+        False
 
 (@) :: [[a]] -> (Int, Int) -> a
 arr @ (x, y) = (arr !! (y - 1)) !! (x - 1)
@@ -320,11 +313,11 @@ countVisited :: [[Square]] -> Int
 countVisited [] = 0
 countVisited (x : xs) =
   foldr
-    (\y z -> (isVisited y) + z)
+    (\y z -> (if isVisited y then 1 else 0) + z)
     0
     x
     + countVisited xs
 
-isVisited :: Square -> Int
-isVisited (Tile (Knowledge u d l r)) = if u || d || l || r then 1 else 0
-isVisited (Obstacle) = 0
+isVisited :: Square -> Bool
+isVisited (Tile (Knowledge u d l r)) = if u || d || l || r then True else False
+isVisited (Obstacle) = False
