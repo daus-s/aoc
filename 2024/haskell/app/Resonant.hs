@@ -34,7 +34,17 @@ processFile filename = do
   contents <- readFile filename
   let field = Field (toResField (lines contents) 0)
   let boundedAntinodes = findAntinodes field (nodes field)
-  printf "there are %d antinodes bounded in the map" (length boundedAntinodes)
+  let boundedGenericAntinodes = findExtraneous field (nodes field)
+  printf "there are %d principal antinodes bounded in the map\n" (length boundedAntinodes)
+  printf "there are %d generalized antinodes bounded in the map\n" (length boundedGenericAntinodes)
+
+extraneous :: Node -> Int -> ((Int, Int), (Int, Int)) -> Node -> [Coord]
+extraneous (Node c1 (Coord x1 y1)) n bounds (Node c2 (Coord x2 y2)) = case inside bounds (Coord (x1 + n * dx) (y1 + n * dy)) of
+  True -> [Coord (x1 + n * dx) (y1 + n * dy)] ++ extraneous (Node c1 (Coord x1 y1)) (n + 1) bounds (Node c2 (Coord x2 y2))
+  False -> []
+  where
+    dx = x2 - x1
+    dy = y2 - y1
 
 antinodes :: Node -> Node -> Coord
 antinodes (Node _ (Coord x1 y1)) (Node _ (Coord x2 y2)) = Coord (x1 + (2 * (x2 - x1))) (y1 + 2 * (y2 - y1))
@@ -116,3 +126,7 @@ eqFreq c (Node n _) = n == c
 findAntinodes :: Field -> [Node] -> Set Coord
 findAntinodes _ [] = empty
 findAntinodes f (n : ns) = union (fromList (filter (inside (borders f)) (map (antinodes n) (getOtherLikeNodes f n)))) (findAntinodes f ns)
+
+findExtraneous :: Field -> [Node] -> Set Coord
+findExtraneous _ [] = empty
+findExtraneous f (n : ns) = union (fromList (filter (inside (borders f)) (concatMap (extraneous n 1 (borders f)) (getOtherLikeNodes f n)))) (findExtraneous f ns)
