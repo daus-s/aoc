@@ -126,8 +126,23 @@ executable resonant
     build-depends:    
         base ^>=4.20.0,
         strings ^>=1.1,
-        split ^>=0.2.5,
         containers ^>=0.7
+
+    hs-source-dirs:   app
+    default-language: Haskell2010
+
+executable fragmenter
+    main-is:          Fragmenter.hs
+    -- Modules included in this executable, other than Main.
+    -- other-modules:
+
+    -- LANGUAGE extensions used by modules in this package.
+    -- other-extensions:
+    build-depends:    
+        base ^>=4.20.0,
+        strings ^>=1.1,
+        split ^>=0.2.5,
+        vector ^>=0.13.2.0
 
     hs-source-dirs:   app
     default-language: Haskell2010
