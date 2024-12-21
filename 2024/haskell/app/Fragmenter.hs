@@ -71,7 +71,9 @@ processFile :: FilePath -> IO ()
 processFile filename = do
   contents <- readFile filename
   let (disk) = fromStr contents File 0
-  printf "the checksum of the reordered disk is %d.\n" (checkSum (fillFree (Disk disk) 0 1))
+  print $ (fillFree (Disk disk) 0 (length disk - 1))
+  putStrLn $ "0099811188827773336446555566.............."
+  printf "the checksum of the reordered disk is %d.\n" (checkSum (fillFree (Disk disk) 0 (length disk - 1)))
   printf "the checksum of the optimized disk is %d.\n" (checkSum (optimizeStorage (Disk disk) (maxFile disk)))
 
 fromStr :: String -> Mode -> Int -> Vector Block
@@ -84,15 +86,15 @@ readInt :: Char -> Int
 readInt c = read [c]
 
 fillFree :: Disk -> Int -> Int -> Disk
-fillFree (Disk disk) first last =
-  if first < last
+fillFree (Disk disk) dst src =
+  if dst < src
     then case isContiguous (Disk disk) of -- trace (show disk) trace ("first: ") trace (show first) trace ("last: ") trace (show last)
       True -> (Disk disk)
-      False -> case disk ! first of
-        Space -> case disk ! ((length disk) - last) of
-          Block i -> fillFree (Disk $ swap disk first last) first last
-          Space -> fillFree (Disk disk) first (last + 1)
-        Block i -> fillFree (Disk disk) (first + 1) last
+      False -> case disk ! dst of
+        Space -> case disk ! src of
+          Block i -> fillFree (Disk $ swap disk dst src) dst src
+          Space -> fillFree (Disk disk) dst (src - 1)
+        Block i -> fillFree (Disk disk) (dst + 1) src
     else
       (Disk disk)
 
