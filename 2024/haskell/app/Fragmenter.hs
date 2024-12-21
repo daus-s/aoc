@@ -14,8 +14,10 @@ import Data.Vector
     fromList,
     length,
     singleton,
+    slice,
     splitAt,
     sum,
+    take,
     takeWhile,
     (!),
     (++),
@@ -70,22 +72,7 @@ processFile filename = do
   contents <- readFile filename
   let (disk) = fromStr contents File 0
   printf "the checksum of the reordered disk is %d.\n" (checkSum (fillFree (Disk disk) 0 1))
-  print $ fillFree (Disk disk) 0 1
-  putStrLn "0099811188827773336446555566.............."
   printf "the checksum of the optimized disk is %d.\n" (checkSum (optimizeStorage (Disk disk) (maxFile disk)))
-  print $ (optimizeStorage (Disk disk) (maxFile disk))
-  print $ Disk $ swapBlocks disk 2 40 2
-  print $ fileSize (Disk disk) 0
-  print $ fileSize (Disk disk) 1
-  print $ fileSize (Disk disk) 2
-  print $ fileSize (Disk disk) 3
-  print $ fileSize (Disk disk) 4
-  print $ fileSize (Disk disk) 5
-  print $ fileSize (Disk disk) 6
-  print $ fileSize (Disk disk) 7
-  print $ fileSize (Disk disk) 8
-  print $ fileSize (Disk disk) 9
-  putStrLn "00992111777.44.333....5555.6666.....8888.."
 
 fromStr :: String -> Mode -> Int -> Vector Block
 fromStr [] _ _ = empty
@@ -96,38 +83,28 @@ fromStr (c : cs) mode id = case mode of
 readInt :: Char -> Int
 readInt c = read [c]
 
--- getLastFile :: Disk -> Int -> Int
--- getLastFile (Disk blocks) depth = case last blocks of
---   Block i -> depth
---   Space -> getLastFile (Disk $ init blocks) (depth + 1)
-
--- getFirstSpace :: Disk -> Int -> Int
--- getFirstSpace (Disk (b : locks)) depth = case b of
---   Block i -> getFirstSpace (Disk locks) (depth + 1)
---   Space -> depth
-
 fillFree :: Disk -> Int -> Int -> Disk
-fillFree (Disk disk) first last = case isContiguous (Disk disk) of -- trace (show disk) trace ("first: ") trace (show first) trace ("last: ") trace (show last)
-  True -> (Disk disk)
-  False -> case disk ! first of
-    Space -> case disk ! ((length disk) - last) of
-      Block i -> fillFree (swap disk first last) first last
-      Space -> fillFree (Disk disk) first (last + 1)
-    Block i -> fillFree (Disk disk) (first + 1) last
+fillFree (Disk disk) first last =
+  if first < last
+    then case isContiguous (Disk disk) of -- trace (show disk) trace ("first: ") trace (show first) trace ("last: ") trace (show last)
+      True -> (Disk disk)
+      False -> case disk ! first of
+        Space -> case disk ! ((length disk) - last) of
+          Block i -> fillFree (Disk $ swap disk first last) first last
+          Space -> fillFree (Disk disk) first (last + 1)
+        Block i -> fillFree (Disk disk) (first + 1) last
+    else
+      (Disk disk)
 
-swap :: Vector Block -> Int -> Int -> Disk
-swap v a b =
-  Disk $
-    prefix
-      Data.Vector.++ singleton (v ! (length v - b))
-      Data.Vector.++ (drop 1 inter) -- trace ("id to drop: ") trace (show $ Data.Vector.head inter)
-      Data.Vector.++ singleton (Space)
-      Data.Vector.++ drop 1 suffix
+swap :: Vector Block -> Int -> Int -> Vector Block
+swap blocks dst src =
+  prefix Data.Vector.++ file Data.Vector.++ beforeFile Data.Vector.++ space Data.Vector.++ afterFile
   where
-    (inter, suffix) = case length rest of
-      0 -> (empty, empty)
-      x -> splitAt (x - b) (rest) -- trace ("swapping the ") trace (show prefix) trace (show rest)
-    (prefix, rest) = splitAt a v -- trace (show a)
+    prefix = take dst blocks
+    file = slice src 1 blocks
+    beforeFile = slice (dst + 1) (src - (dst + 1)) blocks
+    space = slice dst 1 blocks
+    afterFile = drop (src + 1) blocks
 
 isContiguous :: Disk -> Bool
 isContiguous (Disk blocks) =
@@ -199,7 +176,7 @@ fileSize (Disk disk) id =
 
 -- return the first index of a gap of sufficiently long length
 findGaps :: Vector Block -> Int -> Int -> Int -> Int
-findGaps disk startingIndex maxIndex length =
+findGaps disk startingIndex maxIndex len =
   case startingIndex < maxIndex of
     True ->
       if all
@@ -207,35 +184,48 @@ findGaps disk startingIndex maxIndex length =
             Space -> True
             Block _ -> False
         )
-        (fst (splitAt length (snd (splitAt startingIndex blocks))))
+        ( slice
+            startingIndex
+            len
+            disk
+        )
         then
           startingIndex
         else
-          findGaps disk (startingIndex + 1) maxIndex length
+          findGaps disk (startingIndex + 1) maxIndex len
     False -> -1
   where
     blocks = fst (splitAt maxIndex disk)
 
 optimizeStorage :: Disk -> Int -> Disk
-optimizeStorage (Disk disk) id = case id of
-  0 -> (Disk disk)
-  i -> case findGaps disk 0 ind size of
-    -1 -> optimizeStorage (Disk disk) (id - 1) -- no gaps
-    x -> optimizeStorage (Disk $ swapBlocks disk size ind x) (id - 1)
+optimizeStorage (Disk blocks) id = case id of -- trace (show id Prelude.++ " @ " Prelude.++ show src)
+  0 -> (Disk blocks)
+  i -> case findGaps blocks 0 src size of
+    (-1) -> optimizeStorage (Disk blocks) (id - 1) -- no gaps
+    x -> optimizeStorage (Disk $ swapBlocks blocks size src x) (id - 1) -- trace ("file " Prelude.++ show id Prelude.++ ": src@(" Prelude.++ show src Prelude.++ ")\nto dst: " Prelude.++ show x Prelude.++ "\nassert empty: " Prelude.++ show (slice x size blocks) Prelude.++ " (" Prelude.++ show (assertEmpty (slice x size blocks)) Prelude.++ ")\n") trace (show $ Disk blocks)
   where
-    size = (fileSize (Disk disk) id)
-    ind = case findIndex (\b -> fileId b == id) disk of
+    size = (fileSize (Disk blocks) id)
+    src = case findIndex (\b -> fileId b == id) blocks of
       Just index -> index
       Nothing -> -1
 
 -- this assumes
 swapBlocks :: Vector Block -> Int -> Int -> Int -> Vector Block
-swapBlocks blocks len src dst = prefix Data.Vector.++ file Data.Vector.++ beforeFile Data.Vector.++ gap Data.Vector.++ afterFile
+swapBlocks blocks len src dst = prefix Data.Vector.++ file Data.Vector.++ beforeFile Data.Vector.++ space Data.Vector.++ afterFile -- trace ("file:" Prelude.++ (show $ file)) trace ("beforeFile:" Prelude.++ (show $ beforeFile)) trace ("space:" Prelude.++ (show $ space)) trace ("afterFile:" Prelude.++ (show $ afterFile)) trace (show $ Disk $ prefix Data.Vector.++ file Data.Vector.++ beforeFile Data.Vector.++ space Data.Vector.++ afterFile)
   where
-    (file, afterFile) = (splitAt len includesFile)
-    (beforeFile, includesFile) = (splitAt (src - (len + dst)) withoutGap)
-    (gap, withoutGap) = (splitAt len includesGap)
-    (prefix, includesGap) = (splitAt dst blocks)
+    prefix = take dst blocks
+    file = slice src len blocks
+    beforeFile = slice (dst + len) (src - (dst + len)) blocks
+    space = slice dst len blocks
+    afterFile = drop (src + len) blocks
 
 maxFile :: Vector Block -> Int
 maxFile blocks = fileId (maximum blocks)
+
+assertEmpty :: Vector Block -> Bool
+assertEmpty =
+  all
+    ( \x -> case x of
+        Space -> True
+        Block i -> False
+    )
