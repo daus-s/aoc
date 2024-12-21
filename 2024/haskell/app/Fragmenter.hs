@@ -64,15 +64,13 @@ main = do
   args <- getArgs
   case args of
     [filename] -> processFile filename
-    _ -> putStrLn "Usage: cabal run resonant -- <filename>"
+    _ -> putStrLn "Usage: cabal run fragmenter -- <filename>"
 
 -- Open and read the file, process rows, and print the results for
 processFile :: FilePath -> IO ()
 processFile filename = do
   contents <- readFile filename
-  let (disk) = fromStr contents File 0
-  print $ (fillFree (Disk disk) 0 (length disk - 1))
-  putStrLn $ "0099811188827773336446555566.............."
+  let disk = fromStr contents File 0
   printf "the checksum of the reordered disk is %d.\n" (checkSum (fillFree (Disk disk) 0 (length disk - 1)))
   printf "the checksum of the optimized disk is %d.\n" (checkSum (optimizeStorage (Disk disk) (maxFile disk)))
 
