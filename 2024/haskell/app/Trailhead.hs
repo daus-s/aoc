@@ -2,6 +2,7 @@
 
 import Data.Set (Set, empty, singleton, size, union)
 import System.Environment (getArgs)
+import Text.Printf (printf)
 
 data Topography = Top [[Elevation]]
 
@@ -48,8 +49,9 @@ processFile filename = do
   let t = makeMap contents
   let zeros = getTrailheads t
   let paths = sum $ map size (map (findPaths t) zeros)
-  print $ paths
-  print $ t
+  let uPaths = sum $ (map (findUniquePaths t) zeros)
+  printf "there are %d destinations of safe hiking paths.\n" paths
+  printf "there are %d unique paths to any summits" uPaths
 
 makeMap :: String -> Topography
 makeMap s = Top $ map row (lines s)
@@ -91,6 +93,34 @@ findPaths (Top grid) (Coord (x, y)) =
                 else empty
             )
         )
+  where
+    val = grid @ (x, y)
+
+findUniquePaths :: Topography -> Coord -> Int
+findUniquePaths (Top grid) (Coord (x, y)) =
+  case val of
+    Elev 9 -> 1
+    Elev v ->
+      ( if (isBounded grid (Coord (x, y - 1)) && grid @ (x, y - 1) == Elev (v + 1))
+          then
+            findUniquePaths (Top grid) (Coord (x, y - 1))
+          else 0
+      )
+        + ( if isBounded grid (Coord (x, y + 1)) && (grid @ (x, y + 1) == Elev (v + 1))
+              then
+                findUniquePaths (Top grid) (Coord (x, y + 1))
+              else 0
+          )
+        + ( if (isBounded grid (Coord (x - 1, y)) && grid @ (x - 1, y) == Elev (v + 1))
+              then
+                findUniquePaths (Top grid) (Coord (x - 1, y))
+              else 0
+          )
+        + ( if isBounded grid (Coord (x + 1, y)) && (grid @ (x + 1, y) == Elev (v + 1))
+              then
+                findUniquePaths (Top grid) (Coord (x + 1, y))
+              else 0
+          )
   where
     val = grid @ (x, y)
 
