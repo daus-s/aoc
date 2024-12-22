@@ -157,6 +157,7 @@ executable trailhead
     build-depends:    
         base ^>=4.20.0,
         strings ^>=1.1,
+        containers ^>=0.7
 
     hs-source-dirs:   app
     default-language: Haskell2010
