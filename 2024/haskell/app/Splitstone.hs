@@ -13,7 +13,7 @@ main = do
   args <- getArgs
   case args of
     [filename] -> processFile filename
-    _ -> putStrLn "Usage: cabal run trailhead -- <filename>"
+    _ -> putStrLn "Usage: cabal run splitstone -- <filename>"
 
 -- Open and read the file, process rows, and print the results for
 processFile :: FilePath -> IO ()
