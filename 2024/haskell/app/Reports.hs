@@ -6,7 +6,7 @@ main = do
   args <- getArgs
   case args of
     [filename] -> processFile filename
-    _ -> putStrLn "Usage: cabal run historian -- <filename>"
+    _ -> putStrLn "Usage: cabal run reports -- <filename>"
 
 processFile :: FilePath -> IO ()
 processFile filename = do
@@ -21,12 +21,12 @@ processFile filename = do
 
 safeDecline :: [Int] -> Bool
 safeDecline (f : s : rest) = f - 1 >= s && f - 3 <= s && safeDecline (s : rest)
-safeDecline (x : xs) = True --suspect
+safeDecline (x : xs) = True -- suspect
 safeDecline [] = True
 
 safeIncline :: [Int] -> Bool
 safeIncline (f : s : rest) = f + 1 <= s && f + 3 >= s && safeIncline (s : rest)
-safeIncline (x : xs) = True --suspect
+safeIncline (x : xs) = True -- suspect
 safeIncline [] = True
 
 readReport :: String -> [Int]
