@@ -1,6 +1,8 @@
 import qualified Data.Set as S
 import qualified Data.Vector as V
+import Debug.Trace (trace)
 import System.Environment (getArgs)
+import Text.ParserCombinators.ReadP (count)
 import Text.Printf (printf)
 
 type Field = V.Vector (V.Vector Plot)
@@ -10,6 +12,13 @@ type Coord = (Int, Int)
 type Plot = Char
 
 data Facing = North | South | East | West
+
+instance Show Facing where
+  show f = case f of
+    North -> "North"
+    South -> "South"
+    East -> "East"
+    West -> "West"
 
 main = do
   -- Get the command-line arguments
@@ -23,6 +32,7 @@ processFile filename = do
   contents <- readFile filename
   let field = chart contents
   printf "with 'modern' business practices the cost to fence the field is %d.\n" (cost $ regions field)
+  printf "with bulk discounts the cost to fence the field is %d.\n" (bulk $ regions field)
 
 west :: Coord -> Coord
 west (x, y) = (x - 1, y)
@@ -99,5 +109,53 @@ perimeter s = sum $ map countPresentNeighbors (S.elems s)
 econ :: S.Set Coord -> Int
 econ region = area region * perimeter region
 
+noce :: S.Set Coord -> Int
+noce region = area region * corners region
+
+corners :: S.Set Coord -> Int
+corners s = sum $ Prelude.map (countCorners s) (S.elems s)
+
+bulk :: [S.Set Coord] -> Int
+bulk s = sum $ Prelude.map noce s
+
 cost :: [S.Set Coord] -> Int
 cost s = sum $ map econ s
+
+countCorners :: S.Set Coord -> Coord -> Int
+countCorners region coord = case neighbors region coord of -- trace ((show coord) Prelude.++ show (neighbors region coord))
+  [North, South, East] -> ne + se
+  [North, South, West] -> nw + sw
+  [North, East, West] -> nw + ne
+  [South, East, West] -> sw + se
+  [a, b, c, d] -> nw + sw + se + ne
+  [_] -> 2
+  [] -> 4
+  [North, East] -> 1 + ne
+  [North, West] -> 1 + nw
+  [South, West] -> 1 + sw
+  [South, East] -> 1 + se
+  [North, South] -> 0
+  [East, West] -> 0
+  where
+    neighbors :: S.Set Coord -> Coord -> [Facing]
+    neighbors region coord =
+      (if north coord `S.member` region then [North] else [])
+        Prelude.++ (if south coord `S.member` region then [South] else [])
+        Prelude.++ (if east coord `S.member` region then [East] else [])
+        Prelude.++ (if west coord `S.member` region then [West] else [])
+    nw = northwest region coord
+    sw = southwest region coord
+    ne = northeast region coord
+    se = southeast region coord
+
+northwest :: S.Set Coord -> Coord -> Int
+northwest r c = if (north (west c)) `S.member` r then 0 else 1
+
+southwest :: S.Set Coord -> Coord -> Int
+southwest r c = if (south (west c)) `S.member` r then 0 else 1
+
+northeast :: S.Set Coord -> Coord -> Int
+northeast r c = if (north (east c)) `S.member` r then 0 else 1
+
+southeast :: S.Set Coord -> Coord -> Int
+southeast r c = if (south (east c)) `S.member` r then 0 else 1
