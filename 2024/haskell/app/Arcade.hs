@@ -2,7 +2,6 @@
 {-# LANGUAGE TypeSynonymInstances #-}
 
 import Data.List.Split (splitOn)
-import qualified Data.Set as S
 import Debug.Trace (trace)
 import System.Environment (getArgs)
 import Text.Printf (printf)
@@ -56,8 +55,10 @@ processFile :: FilePath -> IO ()
 processFile filename = do
   contents <- readFile filename
   let systems = map parse (groups contents)
+  let incrSys = map plusOff (systems)
   -- mapM_ print $ (map parse $ groups contents)
   printf "the minimum cost to attain all prizes is %d.\n" (sum $ map (tokens . solveSystem) systems)
+  printf "the minimum cost to attain all prizes with correct units is %d.\n" (sum $ map (tokens . solveGen) incrSys)
 
 groups :: String -> [Problem]
 groups s = splitOn "\n\n" s
@@ -103,3 +104,12 @@ solveSystem (Sys (P solX solY) (Cl (X (LinEq (A ax) (B bx))) (Y (LinEq (A ay) (B
 tokens :: Maybe Solution -> Int
 tokens (Just (Sol (A a, B b))) = (3 * a) + b
 tokens Nothing = 0
+
+solveGen :: System -> Maybe Solution
+solveGen (Sys (P x y) (Cl (X (LinEq (A ax) (B bx))) (Y (LinEq (A ay) (B by))))) = if b >= 0 && a >= 0 && r1 == 0 && r2 == 0 then Just (Sol (A a, B b)) else Nothing
+  where
+    (b, r1) = (ay * x - y * ax) `divMod` (ay * bx - ax * by)
+    (a, r2) = (x - bx * b) `divMod` ax
+
+plusOff :: System -> System
+plusOff (Sys (P solX solY) c) = (Sys (P (solX + 10000000000000) (solY + 10000000000000)) c)
