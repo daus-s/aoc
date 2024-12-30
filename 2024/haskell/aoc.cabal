@@ -222,3 +222,21 @@ executable robots
 
     hs-source-dirs:   app
     default-language: Haskell2010
+
+
+executable warehouse 
+    main-is:          Warehouse.hs
+    -- Modules included in this executable, other than Main.
+    -- other-modules:
+
+    -- LANGUAGE extensions used by modules in this package.
+    -- other-extensions:
+    build-depends:    
+        base ^>=4.20.0,
+        strings ^>=1.1,
+        split ^>=0.2.5,
+        vector ^>=0.13.2.0,
+
+    hs-source-dirs:   app
+    default-language: Haskell2010
+
