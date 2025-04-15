@@ -1,0 +1,12 @@
+**/__pycache__/
+
+# ignore input files
+**/input.txt
+**/input
+
+# ignore test files
+**/test.txt
+**/test
+
+#ignore compiled .Class files
+**/*.class
